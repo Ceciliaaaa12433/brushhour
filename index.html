@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>画稿时薪</title>
+<style>
+:root{--bg:#F3EEE3;--card:#FAF7F0;--blue:#1F4FD8;--ink:#1A1A1A;--sub:#6B6B6B;--line:#D9D2C2}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:"Helvetica Neue",Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}
+#app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column}
+main{flex:1;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 20px 24px}
+.page{display:none}.page.on{display:block}
+h1{font-size:12px;letter-spacing:.18em;font-weight:700;color:var(--blue);border-top:3px solid var(--blue);padding-top:8px;margin-bottom:20px}
+.result{border-bottom:1px solid var(--ink);padding-bottom:14px;margin-bottom:6px}
+.rl{font-size:12px;color:var(--sub);letter-spacing:.1em}
+.rv{font-size:46px;font-weight:700;line-height:1.15;letter-spacing:-.02em}
+.rv small{font-size:15px;font-weight:400;color:var(--sub);letter-spacing:0}
+.row{display:grid;grid-template-columns:56px 1fr;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid var(--line)}
+.row>label{font-size:13px;color:var(--sub)}
+.pair{display:flex;align-items:center;gap:8px}.pair span{font-size:13px;color:var(--sub);margin-right:6px}
+input{font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:0;padding:10px;min-height:44px;width:100%;min-width:0;outline:none}
+input:focus{border-color:var(--blue)}
+.pair input{width:84px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:14px;min-height:36px;padding:0 14px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;border-radius:0}
+.chip.sel{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.add{border-style:dashed;color:var(--sub);border-color:var(--sub)}
+.addbox{display:flex;gap:8px;width:100%}.addbox input{min-height:36px;padding:6px 10px}
+.btn{display:block;width:100%;min-height:50px;margin-top:18px;font:inherit;font-size:16px;font-weight:700;letter-spacing:.2em;background:var(--blue);color:#fff;border:0;border-radius:0;cursor:pointer}
+.btn:disabled{background:#B9C3E0;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink);margin-top:10px;font-weight:400;letter-spacing:.1em}
+.btn.danger{color:#B3261E;border-color:#B3261E}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.nav b{font-size:20px;letter-spacing:.04em}
+.nav button{font:inherit;font-size:22px;width:44px;height:44px;border:1px solid var(--ink);background:transparent;cursor:pointer}
+.hero{border-top:1px solid var(--ink);padding:12px 0 14px}
+.hero .v{font-size:44px;font-weight:700;line-height:1.15;color:var(--blue);letter-spacing:-.02em}
+.two{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--ink)}
+.two>div{padding:12px 0}.two>div+div{padding-left:14px;border-left:1px solid var(--line)}
+.two .v{font-size:24px;font-weight:700}
+.sl{font-size:12px;color:var(--sub);letter-spacing:.1em}
+.list{margin-top:6px}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.item .t{font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .r{text-align:right;font-weight:700;color:var(--blue)}
+.item .s{font-size:12px;color:var(--sub)}
+.empty{padding:36px 0;text-align:center;color:var(--sub);font-size:14px}
+.tools{display:flex;gap:8px;margin-top:22px}
+.tools .btn{margin-top:0;min-height:42px;font-size:13px;letter-spacing:.05em}
+.note{font-size:12px;color:var(--sub);margin-top:12px}
+nav.tabs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--ink);background:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs button{font:inherit;font-size:15px;letter-spacing:.15em;min-height:54px;border:0;background:transparent;color:var(--sub);cursor:pointer}
+nav.tabs button.on{color:var(--blue);font-weight:700;box-shadow:inset 0 3px 0 var(--blue)}
+#modal{position:fixed;inset:0;background:rgba(26,26,26,.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
+#modal.on{display:flex}
+#sheet{background:var(--bg);width:100%;max-width:520px;max-height:92%;overflow-y:auto;padding:18px 20px calc(env(safe-area-inset-bottom,0px) + 20px);border-top:3px solid var(--blue)}
+.trow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.trow button{font:inherit;font-size:18px;width:40px;height:40px;border:0;background:transparent;color:#B3261E;cursor:pointer}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+<main>
+  <section class="page on" id="p-add">
+    <h1>记一笔</h1>
+    <div id="addForm"></div>
+    <button class="btn" id="as" disabled>保 存</button>
+  </section>
+  <section class="page" id="p-month">
+    <h1>月报</h1>
+    <div class="nav"><button id="prev">‹</button><b id="mlabel"></b><button id="next">›</button></div>
+    <div class="hero"><div class="sl">平均时薪</div><div class="v" id="sAvg">--</div></div>
+    <div class="two"><div><div class="sl">总用时</div><div class="v" id="sTime">--</div></div><div><div class="sl">总收入</div><div class="v" id="sSum">--</div></div></div>
+    <div class="list" id="list"></div>
+    <div class="tools"><button class="btn ghost" id="bExp">导出 CSV</button><button class="btn ghost" id="bImp">导入备份</button><button class="btn ghost" id="bTyp">管理选项</button></div>
+    <div class="note" id="bk"></div>
+    <input type="file" id="file" accept=".csv,.txt" style="display:none">
+  </section>
+</main>
+<nav class="tabs"><button class="on" data-p="add">记一笔</button><button data-p="month">月报</button></nav>
+</div>
+<div id="modal"><div id="sheet"></div></div>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let recs=[],types=['中文','英文'],notes=['菜菜','米画师','自用'],month='',sel={a:'',e:''},selN={a:'',e:''},adding={at:false,et:false,ao:false,eo:false},editId=null;
+try{const d=JSON.parse(localStorage.getItem('hr_data')||'null');if(d){recs=d.recs||[];types=d.types||types;notes=d.notes||notes}}catch(e){}
+function save(){try{localStorage.setItem('hr_data',JSON.stringify({recs,types,notes}))}catch(e){}}
+const f1=n=>n.toLocaleString('zh-CN',{minimumFractionDigits:1,maximumFractionDigits:1});
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+month=today().slice(0,7);
+const dur=m=>{const h=Math.floor(m/60),r=m%60;return (h?h+'小时':'')+(r||!h?r+'分':'')};
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),1600)}
+
+function formHTML(p){return `<div class="result"><div class="rl">时薪</div><div class="rv" id="${p}r">--</div></div>
+<div class="row"><label>用时</label><div class="pair"><input id="${p}h" type="number" inputmode="numeric" min="0" placeholder="0"><span>小时</span><input id="${p}m" type="number" inputmode="numeric" min="0" placeholder="0"><span>分钟</span></div></div>
+<div class="row"><label>金额</label><div class="pair"><input id="${p}a" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"><span>元</span></div></div>
+<div class="row"><label>名称</label><input id="${p}n" type="text" placeholder="选填"></div>
+<div class="row"><label>日期</label><input id="${p}d" type="date"></div>
+<div class="row"><label>类型</label><div class="chips" id="${p}t"></div></div>
+<div class="row"><label>备注</label><div class="chips" id="${p}o"></div></div>`}
+
+function read(p){
+  const h=parseFloat($('#'+p+'h').value),m=parseFloat($('#'+p+'m').value),a=parseFloat($('#'+p+'a').value);
+  const hh=isNaN(h)?0:h,mm=isNaN(m)?0:m;
+  const mins=Math.round(hh*60+mm);
+  const ok=hh>=0&&mm>=0&&mins>0&&!isNaN(a)&&a>=0;
+  return {mins,a,ok};
+}
+function upd(p){
+  const r=read(p),el=$('#'+p+'r');
+  el.innerHTML=r.ok?`¥ ${f1(r.a/(r.mins/60))} <small>/ 小时</small>`:'--';
+  $('#'+p+'s').disabled=!r.ok;
+}
+function fold(p){
+  const h=parseFloat($('#'+p+'h').value)||0,m=parseFloat($('#'+p+'m').value);
+  if(m>=60){$('#'+p+'h').value=h+Math.floor(m/60);$('#'+p+'m').value=m%60}
+}
+function chips(p,k){
+  if(!k){chips(p,'t');chips(p,'o');return}
+  const box=$('#'+p+k),list=k==='t'?types:notes,S=k==='t'?sel:selN,A=p+k;
+  let h=list.map(t=>`<button type="button" class="chip${S[p]===t?' sel':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('');
+  h+=adding[A]?`<div class="addbox"><input id="${A}new" type="text" placeholder="新选项名称"><button type="button" class="chip" data-ok="1">添加</button></div>`:`<button type="button" class="chip add" data-add="1">＋ 新增</button>`;
+  box.innerHTML=h;
+  box.onclick=e=>{
+    const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.t!==undefined){S[p]=S[p]===b.dataset.t?'':b.dataset.t;chips(p,k)}
+    else if(b.dataset.add){adding[A]=true;chips(p,k);$('#'+A+'new').focus()}
+    else if(b.dataset.ok){const v=$('#'+A+'new').value.trim();if(v&&!list.includes(v)){list.push(v);save()}if(v)S[p]=v;adding[A]=false;chips(p,k)}
+  };
+}
+function wire(p){
+  ['h','m','a'].forEach(k=>$('#'+p+k).addEventListener('input',()=>upd(p)));
+  $('#'+p+'m').addEventListener('blur',()=>{fold(p);upd(p)});
+  chips(p);upd(p);
+}
+
+// 记一笔页
+$('#addForm').innerHTML=formHTML('a');
+$('#ad').value=today();
+wire('a');
+$('#as').onclick=()=>{
+  fold('a');const r=read('a');if(!r.ok)return;
+  recs.push({id:Date.now(),date:$('#ad').value||today(),name:$('#an').value.trim(),type:sel.a,minutes:r.mins,amount:r.a,note:selN.a});
+  save();
+  ['h','m','a','n'].forEach(k=>$('#a'+k).value='');sel.a='';selN.a='';adding.at=false;adding.ao=false;chips('a');upd('a');
+  toast('已保存 ✓');
+};
+
+// 月报页
+function shift(d){const[y,m]=month.split('-').map(Number);const x=new Date(y,m-1+d,1);month=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');renderMonth()}
+$('#prev').onclick=()=>shift(-1);$('#next').onclick=()=>shift(1);
+function renderMonth(){
+  const[y,m]=month.split('-');$('#mlabel').textContent=y+'年'+Number(m)+'月';
+  const rs=recs.filter(r=>r.date.slice(0,7)===month).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.id-a.id);
+  const tm=rs.reduce((s,r)=>s+r.minutes,0),ts=rs.reduce((s,r)=>s+r.amount,0);
+  $('#sTime').innerHTML=tm?`${f1(tm/60)} <small style="font-size:13px;font-weight:400;color:var(--sub)">小时</small>`:'--';
+  $('#sSum').textContent=rs.length?'¥ '+f1(ts):'--';
+  $('#sAvg').innerHTML=tm?`¥ ${f1(ts/(tm/60))} <small style="font-size:15px;font-weight:400;color:var(--sub)">/ 小时</small>`:'--';
+  $('#list').innerHTML=rs.length?rs.map(r=>`<div class="item" data-id="${r.id}"><div class="t">${esc(r.name||'未命名')}</div><div class="r">¥ ${f1(r.amount)}</div><div class="s">${r.date.slice(5)} · ${esc(r.type||'无类型')} · ${dur(r.minutes)}${r.note?' · '+esc(r.note):''}</div><div class="s" style="text-align:right">${f1(r.amount/(r.minutes/60))} /h</div></div>`).join(''):'<div class="empty">这个月还没有记录</div>';
+  let lb='';try{lb=localStorage.getItem('hr_bk')||''}catch(e){}
+  $('#bk').textContent=lb?'上次备份：'+lb:'还没有备份过。数据只存在本机，换手机或清除缓存会丢失，建议定期导出。';
+}
+$('#list').onclick=e=>{const it=e.target.closest('.item');if(it)openEdit(Number(it.dataset.id))};
+
+// 弹窗
+function openModal(h){$('#sheet').innerHTML=h;$('#modal').classList.add('on')}
+function closeModal(){$('#modal').classList.remove('on');editId=null}
+$('#modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
+function openEdit(id){
+  const r=recs.find(x=>x.id===id);if(!r)return;editId=id;
+  openModal(`<h1>修改记录</h1>${formHTML('e')}<button class="btn" id="es">保存修改</button><button class="btn ghost" id="ec">取消</button><button class="btn ghost danger" id="edel">删除这条</button>`);
+  $('#eh').value=Math.floor(r.minutes/60);$('#em').value=r.minutes%60;$('#ea').value=r.amount;
+  if(r.type&&!types.includes(r.type))types.push(r.type);if(r.note&&!notes.includes(r.note))notes.push(r.note);
+  $('#en').value=r.name;$('#ed').value=r.date;sel.e=r.type;selN.e=r.note;adding.et=false;adding.eo=false;
+  wire('e');
+  $('#es').onclick=()=>{fold('e');const x=read('e');if(!x.ok)return;
+    Object.assign(r,{date:$('#ed').value||r.date,name:$('#en').value.trim(),type:sel.e,minutes:x.mins,amount:x.a,note:selN.e});
+    save();closeModal();renderMonth();toast('已修改 ✓')};
+  $('#ec').onclick=closeModal;
+  const db=$('#edel');let armed=false;
+  db.onclick=()=>{
+    if(!armed){armed=true;db.textContent='再点一次确认删除';return}
+    recs=recs.filter(x=>x.id!==id);save();closeModal();renderMonth();toast('已删除');
+  };
+}
+
+// 选项管理
+function openTypes(){
+  openModal(`<h1>管理选项</h1><div class="sl" style="margin-top:4px">类型</div><div id="tl"></div><div class="row" style="grid-template-columns:1fr auto"><input id="tn" type="text" placeholder="新类型名称"><button class="chip" id="tadd">添加</button></div><div class="sl" style="margin-top:18px">备注</div><div id="nl"></div><div class="row" style="grid-template-columns:1fr auto"><input id="nn" type="text" placeholder="新备注名称"><button class="chip" id="nadd">添加</button></div><button class="btn ghost" id="tc">完成</button>`);
+  const draw=()=>{
+    const f=(l,k)=>l.length?l.map((t,i)=>`<div class="trow"><span>${esc(t)}</span><button data-k="${k}" data-i="${i}">×</button></div>`).join(''):'<div class="empty" style="padding:12px 0">暂无</div>';
+    $('#tl').innerHTML=f(types,'t');$('#nl').innerHTML=f(notes,'o');
+  };
+  draw();
+  const del=e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.k,l=k==='t'?types:notes,S=k==='t'?sel:selN,t=l.splice(Number(b.dataset.i),1)[0];if(S.a===t)S.a='';save();draw();chips('a')};
+  $('#tl').onclick=del;$('#nl').onclick=del;
+  $('#tadd').onclick=()=>{const v=$('#tn').value.trim();if(v&&!types.includes(v)){types.push(v);save();$('#tn').value='';draw();chips('a')}};
+  $('#nadd').onclick=()=>{const v=$('#nn').value.trim();if(v&&!notes.includes(v)){notes.push(v);save();$('#nn').value='';draw();chips('a')}};
+  $('#tc').onclick=closeModal;
+}
+$('#bTyp').onclick=openTypes;
+
+// 导出 / 导入 CSV
+const q=v=>{v=String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+$('#bExp').onclick=()=>{
+  if(!recs.length){toast('还没有记录可导出');return}
+  const rows=[['日期','名称','类型','用时(小时)','金额','时薪','备注','用时(分钟)']];
+  [...recs].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.id-b.id).forEach(r=>rows.push([r.date,r.name,r.type,(r.minutes/60).toFixed(2),r.amount,(r.amount/(r.minutes/60)).toFixed(1),r.note,r.minutes]));
+  const blob=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='时薪记录_'+today()+'.csv';
+  document.body.appendChild(a);a.click();a.remove();
+  const t=new Date().toLocaleString('zh-CN');try{localStorage.setItem('hr_bk',t)}catch(e){}
+  renderMonth();toast('已导出');
+};
+function parseCSV(t){
+  const rows=[];let r=[],c='',inq=false;
+  for(let i=0;i<t.length;i++){const ch=t[i];
+    if(inq){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else inq=false}else c+=ch}
+    else if(ch==='"')inq=true;
+    else if(ch===','){r.push(c);c=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(c);c='';rows.push(r);r=[]}
+    else c+=ch}
+  if(c!==''||r.length){r.push(c);rows.push(r)}
+  return rows.filter(x=>x.some(v=>v!==''));
+}
+$('#bImp').onclick=()=>{$('#file').value='';$('#file').click()};
+$('#file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const rows=parseCSV(String(rd.result).replace(/^\ufeff/,''));
+    if(rows.length<2||!rows[0].includes('日期')){toast('文件格式不对');return}
+    const H=rows[0],ix=k=>H.indexOf(k);
+    let n=0,id=Date.now();
+    rows.slice(1).forEach(x=>{
+      const date=(x[ix('日期')]||'').trim(),amount=parseFloat(x[ix('金额')]);
+      let mins=ix('用时(分钟)')>=0?parseFloat(x[ix('用时(分钟)')]):NaN;
+      if(isNaN(mins))mins=Math.round(parseFloat(x[ix('用时(小时)')])*60);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(amount)||amount<0||!(mins>0))return;
+      const type=(x[ix('类型')]||'').trim();
+      if(type&&!types.includes(type))types.push(type);
+      const note=(x[ix('备注')]||'').trim();if(note&&note.length<=8&&!notes.includes(note))notes.push(note);
+      recs.push({id:id++,date,name:(x[ix('名称')]||'').trim(),type,minutes:Math.round(mins),amount,note});n++;
+    });
+    save();chips('a');renderMonth();toast(n?`已导入 ${n} 条`:'没有可导入的记录');
+  };
+  rd.readAsText(f,'utf-8');
+};
+
+// 底部标签
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));
+  if(b.dataset.p==='month')renderMonth();
+});
+renderMonth();
+</script>
+</body>
+</html>
