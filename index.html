@@ -49,7 +49,7 @@ input:focus{border-color:var(--blue)}
 .tools{display:flex;gap:8px;margin-top:22px}
 .tools .btn{margin-top:0;min-height:42px;font-size:13px;letter-spacing:.05em}
 .note{font-size:12px;color:var(--sub);margin-top:12px}
-nav.tabs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--ink);background:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--ink);background:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.tabs button{font:inherit;font-size:15px;letter-spacing:.15em;min-height:54px;border:0;background:transparent;color:var(--sub);cursor:pointer}
 nav.tabs button.on{color:var(--blue);font-weight:700;box-shadow:inset 0 3px 0 var(--blue)}
 #modal{position:fixed;inset:0;background:rgba(26,26,26,.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
@@ -59,6 +59,9 @@ nav.tabs button.on{color:var(--blue);font-weight:700;box-shadow:inset 0 3px 0 va
 .trow button{font:inherit;font-size:18px;width:40px;height:40px;border:0;background:transparent;color:#B3261E;cursor:pointer}
 #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}
 #toast.on{opacity:1}
+.seg{display:flex;border:1px solid var(--ink);margin-bottom:14px}.seg button{flex:1;font:inherit;font-size:14px;min-height:40px;border:0;background:transparent;color:var(--ink);cursor:pointer}.seg button.on{background:var(--ink);color:var(--bg)}
+.fg{padding:10px 0;border-bottom:1px solid var(--line)}.fg .sl{margin-bottom:8px}
+.desc{font-size:13px;color:var(--sub);margin:14px 0 4px}
 </style>
 </head>
 <body>
@@ -79,8 +82,20 @@ nav.tabs button.on{color:var(--blue);font-weight:700;box-shadow:inset 0 3px 0 va
     <div class="note" id="bk"></div>
     <input type="file" id="file" accept=".csv,.txt" style="display:none">
   </section>
+  <section class="page" id="p-sum">
+    <h1>汇总</h1>
+    <div class="seg" id="sRange"><button data-v="month" class="on">当月</button><button data-v="all">全部</button></div>
+    <div class="nav" id="sNav"><button id="sprev">‹</button><b id="smlabel"></b><button id="snext">›</button></div>
+    <div class="fg"><div class="sl">类型（可多选）</div><div class="chips" id="sT"></div></div>
+    <div class="fg"><div class="sl">备注（可多选）</div><div class="chips" id="sO"></div></div>
+    <div class="fg" id="sModeBox"><div class="sl">多个条件时</div><div class="seg" id="sMode" style="margin:0"><button data-v="and" class="on">同时满足</button><button data-v="or">满足任一</button></div></div>
+    <div class="desc" id="sDesc"></div>
+    <div class="hero" style="border-top:1px solid var(--ink)"><div class="sl">平均时薪</div><div class="v" id="xAvg">--</div></div>
+    <div class="two"><div><div class="sl">总用时</div><div class="v" id="xTime">--</div></div><div><div class="sl">总收入</div><div class="v" id="xSum">--</div></div></div>
+    <div class="note" id="xCnt"></div>
+  </section>
 </main>
-<nav class="tabs"><button class="on" data-p="add">记一笔</button><button data-p="month">月报</button></nav>
+<nav class="tabs"><button class="on" data-p="add">记一笔</button><button data-p="month">月报</button><button data-p="sum">汇总</button></nav>
 </div>
 <div id="modal"><div id="sheet"></div></div>
 <div id="toast"></div>
@@ -154,6 +169,7 @@ $('#as').onclick=()=>{
 // 月报页
 function shift(d){const[y,m]=month.split('-').map(Number);const x=new Date(y,m-1+d,1);month=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');renderMonth()}
 $('#prev').onclick=()=>shift(-1);$('#next').onclick=()=>shift(1);
+let sRange='month',sMode='and',sT=new Set(),sO=new Set();
 function renderMonth(){
   const[y,m]=month.split('-');$('#mlabel').textContent=y+'年'+Number(m)+'月';
   const rs=recs.filter(r=>r.date.slice(0,7)===month).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.id-a.id);
@@ -163,6 +179,7 @@ function renderMonth(){
   $('#sAvg').innerHTML=tm?`¥ ${f1(ts/(tm/60))} <small style="font-size:15px;font-weight:400;color:var(--sub)">/ 小时</small>`:'--';
   $('#list').innerHTML=rs.length?rs.map(r=>`<div class="item" data-id="${r.id}"><div class="t">${esc(r.name||'未命名')}</div><div class="r">¥ ${f1(r.amount)}</div><div class="s">${r.date.slice(5)} · ${esc(r.type||'无类型')} · ${dur(r.minutes)}${r.note?' · '+esc(r.note):''}</div><div class="s" style="text-align:right">${f1(r.amount/(r.minutes/60))} /h</div></div>`).join(''):'<div class="empty">这个月还没有记录</div>';
   let lb='';try{lb=localStorage.getItem('hr_bk')||''}catch(e){}
+  renderSum();
   $('#bk').textContent=lb?'上次备份：'+lb:'还没有备份过。数据只存在本机，换手机或清除缓存会丢失，建议定期导出。';
 }
 $('#list').onclick=e=>{const it=e.target.closest('.item');if(it)openEdit(Number(it.dataset.id))};
@@ -252,11 +269,44 @@ $('#file').onchange=e=>{
   rd.readAsText(f,'utf-8');
 };
 
+// 汇总
+function renderSum(){
+  sT=new Set([...sT].filter(x=>types.includes(x)));sO=new Set([...sO].filter(x=>notes.includes(x)));
+  const[y,m]=month.split('-');$('#smlabel').textContent=y+'年'+Number(m)+'月';
+  $('#sNav').style.display=sRange==='month'?'flex':'none';
+  $('#sRange').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===sRange));
+  $('#sMode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===sMode));
+  const mk=(l,S,k)=>l.map(t=>`<button type="button" class="chip${S.has(t)?' sel':''}" data-k="${k}" data-t="${esc(t)}">${esc(t)}</button>`).join('')||'<span class="sl">暂无选项</span>';
+  $('#sT').innerHTML=mk(types,sT,'t');$('#sO').innerHTML=mk(notes,sO,'o');
+  const n=sT.size+sO.size;
+  $('#sModeBox').style.display=sT.size&&sO.size?'block':'none';
+  let rs=recs.filter(r=>sRange==='all'||r.date.slice(0,7)===month);
+  if(n){
+    rs=rs.filter(r=>{
+      const a=sT.has(r.type),b=sO.has(r.note);
+      if(sMode==='or')return a||b;
+      return (!sT.size||a)&&(!sO.size||b);
+    });
+  }
+  const tm=rs.reduce((s,r)=>s+r.minutes,0),ts=rs.reduce((s,r)=>s+r.amount,0);
+  const names=[...sT,...sO];
+  $('#sDesc').textContent=(sRange==='all'?'全部时间':y+'年'+Number(m)+'月')+' · '+(names.length?names.join(sT.size&&sO.size?(sMode==='and'?' 且 ':' 或 '):' 或 '):'未选条件，汇总全部稿件');
+  $('#xTime').innerHTML=tm?`${f1(tm/60)} <small style="font-size:13px;font-weight:400;color:var(--sub)">小时</small>`:'--';
+  $('#xSum').textContent=rs.length?'¥ '+f1(ts):'--';
+  $('#xAvg').innerHTML=tm?`¥ ${f1(ts/(tm/60))} <small style="font-size:15px;font-weight:400;color:var(--sub)">/ 小时</small>`:'--';
+  $('#xCnt').textContent=rs.length?`共 ${rs.length} 条记录`:'没有符合条件的记录';
+}
+$('#sRange').onclick=e=>{const b=e.target.closest('button');if(b){sRange=b.dataset.v;renderSum()}};
+$('#sMode').onclick=e=>{const b=e.target.closest('button');if(b){sMode=b.dataset.v;renderSum()}};
+$('#sprev').onclick=()=>shift(-1);$('#snext').onclick=()=>shift(1);
+const togg=e=>{const b=e.target.closest('button');if(!b||!b.dataset.t)return;const S=b.dataset.k==='t'?sT:sO;S.has(b.dataset.t)?S.delete(b.dataset.t):S.add(b.dataset.t);renderSum()};
+$('#sT').onclick=togg;$('#sO').onclick=togg;
+
 // 底部标签
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));
-  if(b.dataset.p==='month')renderMonth();
+  if(b.dataset.p==='month')renderMonth();if(b.dataset.p==='sum')renderSum();
 });
 renderMonth();
 </script>
